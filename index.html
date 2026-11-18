@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScreenShare - 专业屏幕共享</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#fff;font-family:Arial,"Microsoft YaHei",sans-serif}
+header{padding:20px 7%;border-bottom:1px solid #29364d;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:23px;font-weight:bold;color:#60a5fa}
+.status{font-size:13px;color:#86efac}
+main{max-width:1000px;margin:45px auto;padding:20px}
+h1{text-align:center;font-size:38px}
+.desc{text-align:center;color:#9caac2;line-height:1.8}
+.panel{margin-top:30px;background:#151e33;border:1px solid #2b3a56;border-radius:18px;padding:25px}
+h2{font-size:19px}
+.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.setting{background:#0d1629;padding:15px;border-radius:12px}
+label{display:block;color:#aab9d0;font-size:13px;margin-bottom:10px}
+select{width:100%;padding:12px;background:#25344d;color:white;border:1px solid #455774;border-radius:8px}
+.screen{margin-top:20px;background:#070b14;border:1px dashed #455774;border-radius:12px;min-height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+video{width:100%;max-height:560px;display:none}
+.placeholder{text-align:center;color:#94a3b8}
+.placeholder .emoji{font-size:55px}
+.buttons{text-align:center;margin:20px}
+button{padding:13px 22px;border:0;border-radius:9px;margin:5px;cursor:pointer;font-size:15px}
+.primary{background:#2563eb;color:white}
+.secondary{background:#33445e;color:white}
+button:disabled{opacity:.4;cursor:not-allowed}
+.info{background:#0d1629;padding:15px;border-radius:10px;color:#cbd5e1;font-size:13px;line-height:2}
+#message{color:#86efac}
+.features{display:flex;justify-content:center;gap:25px;flex-wrap:wrap;color:#aab9d0;margin:30px}
+footer{text-align:center;padding:30px;color:#64748b}
+@media(max-width:650px){h1{font-size:29px}.settings{grid-template-columns:1fr}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">◈ ScreenShare</div>
+<div class="status">● 专业共享工作台</div>
+</header>
+
+<main>
+<h1>让屏幕分享更简单</h1>
+<p class="desc">高清画质 · 自定义帧率 · 实时屏幕预览</p>
+
+<section class="panel">
+<h2>⚙️ 画质控制中心</h2>
+
+<div class="settings">
+<div class="setting">
+<label>分辨率</label>
+<select id="resolution">
+<option value="1280,720">720P - 高清</option>
+<option value="1920,1080" selected>1080P - 全高清</option>
+<option value="2560,1440">2K - 超清</option>
+<option value="3840,2160">4K - 极清</option>
+<option value="7680,4320">8K - 极致</option>
+</select>
+</div>
+
+<div class="setting">
+<label>帧率</label>
+<select id="fps">
+<option value="15">15 FPS</option>
+<option value="30">30 FPS</option>
+<option value="60" selected>60 FPS</option>
+<option value="120">120 FPS</option>
+</select>
+</div>
+
+<div class="setting">
+<label>画质模式</label>
+<select id="quality">
+<option value="smooth">流畅优先</option>
+<option value="balanced" selected>均衡模式</option>
+<option value="high">高清优先</option>
+</select>
+</div>
+</div>
+
+<div class="buttons">
+<button class="primary" id="start">▶ 开始共享屏幕</button>
+<button class="secondary" id="apply" disabled>应用画质设置</button>
+<button class="secondary" id="stop" disabled>■ 停止共享</button>
+</div>
+
+<div class="screen">
+<div class="placeholder" id="placeholder">
+<div class="emoji">🖥️</div>
+<p>等待开始共享屏幕</p>
+<p>选择画质和帧率，然后点击开始共享</p>
+</div>
+<video id="preview" autoplay muted playsinline></video>
+</div>
+
+<div class="info">
+<strong>当前采集状态</strong><br>
+状态：<span id="message">尚未开始</span><br>
+实际分辨率：<span id="actualResolution">--</span><br>
+实际帧率：<span id="actualFps">--</span><br>
+画质模式：<span id="actualQuality">均衡模式</span>
+</div>
+<p class="desc" style="font-size:12px">
+注意：设置是采集目标，不保证设备一定能达到。最终显示的是浏览器报告的实际采集参数。
+</p>
+</section>
+
+<div class="features">
+<span>🔗 分享链接：开发中</span>
+<span>👥 多人观看：开发中</span>
+<span>🔒 安全访问：开发中</span>
+</div>
+</main>
+
+<footer>ScreenShare © 2026 · 在线屏幕共享平台</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+let stream=null;
+let track=null;
+
+function updateActual(){
+ if(!track)return;
+ const s=track.getSettings();
+ $('actualResolution').textContent=
+ (s.width||'未知')+' × '+(s.height||'未知');
+ $('actualFps').textContent=
+ s.frameRate ? s.frameRate.toFixed(1)+' FPS':'未知';
+}
+
+async function applyQuality(){
+ if(!track)return;
+ const [w,h]=$('resolution').value.split(',').map(Number);
+ const fps=Number($('fps').value);
+ const mode=$('quality').value;
+ const constraints={
+  width:{ideal:w},
+  height:{ideal:h},
+  frameRate:{ideal:fps}
+ };
+ try{
+  await track.applyConstraints(constraints);
+  updateActual();
+  $('message').textContent='画质设置已应用';
+ }catch(e){
+  updateActual();
+  $('message').textContent='部分设置不受支持，已保留设备可用画质';
+ }
+ $('actualQuality').textContent=
+ mode==='smooth'?'流畅优先':
+ mode==='high'?'高清优先':'均衡模式';
+}
+
+$('start').onclick=async()=>{
+ if(!navigator.mediaDevices?.getDisplayMedia){
+  alert('当前环境不支持屏幕共享，请使用最新版 Chrome 或 Edge，并通过 HTTPS 打开网站。');
+  return;
+ }
+ try{
+  stream=await navigator.mediaDevices.getDisplayMedia({
+   video:true,
+   audio:false
+  });
+  track=stream.getVideoTracks()[0];
+  $('preview').srcObject=stream;
+  $('preview').style.display='block';
+  $('placeholder').style.display='none';
+  $('start').disabled=true;
+  $('stop').disabled=false;
+  $('apply').disabled=false;
+  await applyQuality();
+  $('message').textContent='屏幕正在本机预览';
+  track.onended=stopSharing;
+ }catch(e){
+  $('message').textContent='共享未能启动：'+e.message;
+ }
+};
+
+function stopSharing(){
+ if(stream)stream.getTracks().forEach(t=>t.stop());
+ stream=null;
+ track=null;
+ $('preview').srcObject=null;
+ $('preview').style.display='none';
+ $('placeholder').style.display='block';
+ $('start').disabled=false;
+ $('stop').disabled=true;
+ $('apply').disabled=true;
+ $('message').textContent='共享已停止';
+ $('actualResolution').textContent='--';
+ $('actualFps').textContent='--';
+}
+
+$('apply').onclick=applyQuality;
+$('stop').onclick=stopSharing;
+</script>
+</body>
+</html>
